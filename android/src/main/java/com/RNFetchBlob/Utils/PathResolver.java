@@ -115,31 +115,15 @@ public class PathResolver {
                 // Return the remote address
                 if (isGooglePhotosUri(uri))
                     return uri.getLastPathSegment();
+                
+                else if (isGoogleDriveUri(uri))
+                    return getFileNameFromOtherProviders(context, uri);
 
                 return getDataColumn(context, uri, null, null);
             }
             // Other Providers
             else{
-                try {
-                    InputStream attachment = context.getContentResolver().openInputStream(uri);
-                    if (attachment != null) {
-                        String filename = getContentName(context.getContentResolver(), uri);
-                        if (filename != null) {
-                            File file = new File(context.getCacheDir(), filename);
-                            FileOutputStream tmp = new FileOutputStream(file);
-                            byte[] buffer = new byte[1024];
-                            while (attachment.read(buffer) > 0) {
-                                tmp.write(buffer);
-                            }
-                            tmp.close();
-                            attachment.close();
-                            return file.getAbsolutePath();
-                        }
-                    }
-                } catch (Exception e) {
-                    RNFetchBlobUtils.emitWarningEvent(e.toString());
-                    return null;
-                }
+                return getFileNameFromOtherProviders(context, uri);
             }
         }
         // MediaStore (and general)
@@ -148,6 +132,9 @@ public class PathResolver {
             // Return the remote address
             if (isGooglePhotosUri(uri))
                 return uri.getLastPathSegment();
+            
+            else if (isGoogleDriveUri(uri))
+                return getFileNameFromOtherProviders(context, uri);
 
             return getDataColumn(context, uri, null, null);
         }
@@ -212,6 +199,38 @@ public class PathResolver {
 
 
     /**
+     * This is need for google drive
+     *
+     * @param context The context.
+     * @param uri The Uri to query.
+     */
+    public static String getFileNameFromOtherProviders(Context context, Uri uri) {
+        String result = null;
+        try {
+            InputStream attachment = context.getContentResolver().openInputStream(uri);
+            if (attachment != null) {
+                String filename = getContentName(context.getContentResolver(), uri);
+                if (filename != null) {
+                    File file = new File(context.getCacheDir(), filename);
+                    FileOutputStream tmp = new FileOutputStream(file);
+                    byte[] buffer = new byte[1024];
+                    while (attachment.read(buffer) > 0) {
+                        tmp.write(buffer);
+                    }
+                    tmp.close();
+                    attachment.close();
+                    result = file.getAbsolutePath();
+                }
+            }
+        } catch (Exception e) {
+            RNFetchBlobUtils.emitWarningEvent(e.toString());
+            return null;
+        }
+        return result;
+    }
+
+
+    /**
      * @param uri The Uri to check.
      * @return Whether the Uri authority is ExternalStorageProvider.
      */
@@ -241,6 +260,14 @@ public class PathResolver {
      */
     public static boolean isGooglePhotosUri(Uri uri) {
         return "com.google.android.apps.photos.content".equals(uri.getAuthority());
+    }
+
+    /**
+     * @param uri The Uri to check.
+     * @return Whether the Uri authority is Google Docs.
+     */
+    public static boolean isGoogleDriveUri(Uri uri) {
+        return "com.google.android.apps.docs.storage".equals(uri.getAuthority());
     }
 
 }
